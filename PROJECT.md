@@ -12,7 +12,7 @@ The core user flow is register, log in, receive a custodial wallet, mine test co
 - Backend: Node.js, Express 5, CommonJS, async/await.
 - App database: MongoDB through Mongoose. It stores users and wallet metadata only.
 - Educational blockchain: JavaScript in `backend/blockchain/`, persisted to `backend/data/chain.json`.
-- Authentication: bcryptjs password hashes and JWT bearer tokens.
+- Authentication: bcryptjs password hashes, JWT access/refresh tokens, and revocable MongoDB sessions.
 - Cryptography: Node `crypto`, SHA-256, ECDSA secp256k1, AES-256-GCM.
 - Hardening: Helmet, single-origin CORS, a 10kb JSON limit, and express-rate-limit.
 
@@ -41,9 +41,14 @@ Base URL is `http://localhost:5000/api`; bodies use JSON and errors have shape `
 | Method | Path | Access | Purpose |
 | --- | --- | --- | --- |
 | GET | `/health` | Public | Health status and app name |
-| POST | `/auth/register` | Public | Create user and wallet; return token, user, and address |
-| POST | `/auth/login` | Public | Authenticate and return token and user |
+| POST | `/auth/register` | Public | Create user, wallet, and session; set HttpOnly cookies |
+| POST | `/auth/login` | Public | Authenticate and set HttpOnly cookies |
+| POST | `/auth/refresh` | Cookie | Rotate the refresh token and issue a new access token |
+| POST | `/auth/logout` | Cookie | Revoke the current session and clear cookies |
 | GET | `/auth/me` | Protected | Current user without password hash |
+| GET | `/auth/sessions` | Protected | List the current user's active sessions |
+| DELETE | `/auth/sessions/:sessionId` | Protected | Revoke one of the current user's sessions |
+| GET | `/auth/admin-check` | Admin | Example endpoint protected by role authorization |
 | GET | `/wallet` | Protected | Address, public key, confirmed and available balances |
 | POST | `/transactions/send` | Protected | Sign and enqueue a transaction |
 | GET | `/transactions` | Protected | User history, pending first |
@@ -52,15 +57,15 @@ Base URL is `http://localhost:5000/api`; bodies use JSON and errors have shape `
 | GET | `/blockchain/blocks` | Public | Blocks newest first |
 | POST | `/blockchain/mine` | Protected | Mine pending transactions and reward caller |
 
-Registration validates a 3–30 character username, email, and password of at least 8 characters. Login uses the same 401 message for unknown email and wrong password. Send validates the recipient address and finite numeric amount greater than zero and fee greater than or equal to zero. Rate limits are 300 requests per 15 minutes on `/api` and 20 per 15 minutes on `/api/auth`.
+Registration validates a 3–30 character username, email, and password of at least 8 characters. Login uses the same 401 message for unknown email and wrong password. Send validates the recipient address and finite numeric amount greater than zero and fee greater than or equal to zero. Cookie-authenticated browser mutations must include the configured `Origin`; the React client must use `credentials: 'include'`. Rate limits are 300 requests per 15 minutes on `/api` and 20 per 15 minutes on `/api/auth`.
 
 ## Security and environment invariants
 
-Environment-only configuration: `PORT`, `MONGO_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CLIENT_URL`, and `WALLET_ENC_KEY` (64 hex characters). CORS is limited to `CLIENT_URL`; Helmet is enabled; request JSON is limited to 10kb. Passwords use bcrypt cost 12. Validate input types and formats on the server. Never store balances, trust client balances, return private keys, or omit auth from protected routes. `.env`, chain data, and `node_modules` must not be committed. Do not print secret values when troubleshooting configuration.
+Environment-only configuration: `PORT`, `MONGO_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `CLIENT_URL`, and `WALLET_ENC_KEY` (64 hex characters). CORS is limited to `CLIENT_URL` and allows credentials. The API sets 15-minute access JWTs and rotating 7-day refresh JWTs in HttpOnly, SameSite=Strict cookies; Secure is enabled in production. MongoDB stores only a hash of each refresh token, so sessions can be revoked and are invalidated on logout. Cookie-authenticated mutations require the configured Origin; clients should send cookies with credentials. Bearer access tokens remain supported for API clients. Helmet is enabled; request JSON is limited to 10kb. Passwords use bcrypt cost 12. Validate input types and formats on the server. Never store balances, trust client balances, return private keys, or omit auth from protected routes. `.env`, chain data, and `node_modules` must not be committed. Do not print secret values when troubleshooting configuration.
 
 ## Frontend plan
 
-Planned routes: landing, register, login, dashboard, wallet, send, receive, transactions, settings, and a block explorer. The visual direction is dark near-black with CSS variable tokens in `frontend/src/index.css`; reuse tokens instead of hardcoding colors. All HTTP calls belong in `frontend/src/api.js`. Use React Router, function components, hooks, and a protected-route wrapper. JWT may be kept in memory and localStorage for this learning app, with the XSS tradeoff documented. The browser may see addresses and public keys, never private keys.
+Planned routes: landing, register, login, dashboard, wallet, send, receive, transactions, settings, and a block explorer. The visual direction is dark near-black with CSS variable tokens in `frontend/src/index.css`; reuse tokens instead of hardcoding colors. All HTTP calls belong in `frontend/src/api.js`. Use React Router, function components, hooks, and a protected-route wrapper. Authentication uses HttpOnly cookies; frontend requests must opt into credentials and must not read or store JWTs in JavaScript. The browser may see addresses and public keys, never private keys.
 
 The send flow should review amount, shortened/copyable recipient, network, fee, total, and confirmation before submitting. Transaction details show amount, date, pending/confirmed badge, recipient, fee, and block link. Receive shows a copyable address. Explain confirmed versus available balance in the UI.
 

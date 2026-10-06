@@ -1,7 +1,13 @@
 const router = require('express').Router();
 const auth = require('../middleware/auth');
-const { register, login, me } = require('../controllers/authController');
+const authorize = require('../middleware/authorize');
+const { register, login, me, refresh, logout, listSessions, revokeSession, adminCheck } = require('../controllers/authController');
 router.post('/register', register);
 router.post('/login', login);
+router.post('/refresh', refresh);
+router.post('/logout', logout);
 router.get('/me', auth, me);
+router.get('/sessions', auth, listSessions);
+router.delete('/sessions/:sessionId', auth, revokeSession);
+router.get('/admin-check', auth, authorize('admin'), adminCheck);
 module.exports = router;
