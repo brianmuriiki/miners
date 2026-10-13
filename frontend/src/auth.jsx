@@ -20,13 +20,13 @@ export function AuthProvider({ children }) {
     setUser(data.user);
   }
 
-  async function loginGoogle(credential) {
+  const loginGoogle = useCallback(async (credential) => {
     lockCryChainWallet();
     const data = await api.googleLogin(credential);
     setUser(data.user);
-  }
+  }, []);
 
-  async function registerGoogle({ credential, username, walletPassword, referralCode }) {
+  const registerGoogle = useCallback(async ({ credential, username, walletPassword, referralCode }) => {
     if (hasCryChainKeystore()) throw new Error('This browser already has an encrypted CryChain wallet. Back it up or use another browser to create a new account.');
     if (typeof username !== 'string' || username.trim().length < 3 || username.trim().length > 30) throw new Error('Enter a username between 3 and 30 characters first.');
     if (typeof walletPassword !== 'string' || walletPassword.length < 8) throw new Error('Choose a wallet password with at least 8 characters first.');
@@ -38,7 +38,7 @@ export function AuthProvider({ children }) {
       return { mnemonic: created.mnemonic, user: data.user, storageWarning: 'Your account was created, but this browser could not save its encrypted keystore. Keep the recovery phrase safe and restore the wallet before sending.' };
     }
     return { mnemonic: created.mnemonic, user: data.user };
-  }
+  }, []);
 
   async function register(form) {
     const created = await createCryChainWallet(form.password);
