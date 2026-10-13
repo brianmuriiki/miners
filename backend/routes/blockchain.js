@@ -1,7 +1,14 @@
 const router = require('express').Router();
 const auth = require('../middleware/auth');
-const { info, blocks, mine } = require('../controllers/blockchainController');
+const { info, blocks, block, transaction, mempool, fees, address, addressTransactions, addressHistory, mine } = require('../controllers/blockchainController');
 router.get('/', info);
 router.get('/blocks', blocks);
+router.get('/blocks/:id', block);
+router.get('/transactions/:id', transaction);
+router.get('/mempool', mempool);
+router.get('/fees', fees);
+router.get('/address/:address', address);
+router.get('/address/:address/transactions', addressTransactions);
+router.get('/address/:address/history', addressHistory);
 router.post('/mine', auth, mine);
 module.exports = router;

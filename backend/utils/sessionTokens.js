@@ -17,7 +17,7 @@ function createAccessToken(user, sessionId) {
 }
 
 function createRefreshToken(userId, sessionId) {
-  return jwt.sign({ sub: String(userId), sid: String(sessionId), type: 'refresh' }, process.env.JWT_REFRESH_SECRET, {
+  return jwt.sign({ sub: String(userId), sid: String(sessionId), type: 'refresh', jti: crypto.randomUUID() }, process.env.JWT_REFRESH_SECRET, {
     ...tokenClaims(), algorithm: 'HS256', expiresIn: REFRESH_TTL_SECONDS,
   });
 }

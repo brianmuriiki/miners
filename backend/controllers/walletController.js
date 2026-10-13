@@ -5,6 +5,7 @@ const httpError = require('../utils/httpError');
 exports.getWallet = async (req, res) => {
   const wallet = await Wallet.findOne({ userId: req.user.id });
   if (!wallet) throw httpError(404, 'Wallet not found');
-  const balance = blockchain.getBalance(wallet.address);
-  res.json({ address: wallet.address, publicKey: wallet.publicKey, balance, available: balance - blockchain.getPendingOutgoing(wallet.address) });
+  if (!/^04[0-9a-f]{128}$/.test(wallet.publicKey)) throw httpError(409, 'This account has a legacy CryChain wallet. Its old chain and keys need a separate migration before this wallet can be used.');
+  const account = blockchain.getAccount(wallet.address);
+  res.json({ ...account, publicKey: wallet.publicKey, unit: 100000000 });
 };
